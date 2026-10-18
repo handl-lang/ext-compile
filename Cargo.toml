@@ -325,6 +325,7 @@ handl-lib-utils = { path = "../lib-utils" }
 [patch."https://github.com/handl-lang/otlp"]
 
 [patch."https://github.com/handl-lang/host"]
+handl-plugin-lib-stdlib = { path = "../host/crates/plugin-lib-stdlib" }
 handl-bench = { path = "../host/crates/bench" }
 handl-ext-tests = { path = "../host/crates/ext-tests" }
 handl-host-tooling = { path = "../host/crates/host-tooling" }
@@ -370,8 +371,5 @@ handl-plugin-sdkgen-emitter-python = { path = "../sdkgen-python" }
 
 [patch."https://github.com/handl-lang/sdkgen-webidl"]
 handl-plugin-sdkgen-backend-webidl = { path = "../sdkgen-webidl" }
-
-[patch."https://github.com/handl-lang/stdlib"]
-handl-plugin-lib-stdlib = { path = "../stdlib/crates/plugin-lib-stdlib" }
 
 [patch."https://github.com/handl-lang/web"]
