@@ -93,8 +93,6 @@ serde_json = "1"
 [profile.dev]
 opt-level = 1
 
-[patch."https://github.com/handl-lang/c"]
-
 [patch."https://github.com/handl-lang/compile-dot"]
 handl-plugin-compile-dot = { path = "../compile-dot/modules/compile-dot" }
 
@@ -372,4 +370,3 @@ handl-plugin-sdkgen-emitter-python = { path = "../sdkgen-python" }
 [patch."https://github.com/handl-lang/sdkgen-webidl"]
 handl-plugin-sdkgen-backend-webidl = { path = "../sdkgen-webidl" }
 
-[patch."https://github.com/handl-lang/web"]
