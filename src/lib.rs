@@ -20,9 +20,9 @@ use std::rc::Rc;
 use handl_ext::{ExtRequest, ExtResponse, ExtensionManifest};
 use handl_kit_arrow_lower::lower_ast;
 use handl_language::{AstRef, Language, Source};
-use handl_plugin_engine_lex_pattern::DataLexerEngine;
-use handl_plugin_engine_parse::{ParserEngine, ParserRequest};
-use handl_plugin_engine_parse_pratt::PrattEngine;
+use hnl_engine_lex_pattern::DataLexerEngine;
+use hnl_engine_parse::{ParserEngine, ParserRequest};
+use hnl_engine_parse_pratt::PrattEngine;
 use handl_runtime::{EngineRegistry, Runtime, RuntimeConfig};
 use serde_json::Value;
 
@@ -165,7 +165,7 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
         }
     };
 
-    let report = handl_plugin_engine_typecheck::TypecheckReport::default();
+    let report = hnl_engine_typecheck::TypecheckReport::default();
     let input = handl_plugin_compile::CompilerInput::new(
         src,
         ast,
@@ -311,7 +311,7 @@ fn js_module_graph(
 fn module_import_specs(lang: &Language, src: &str) -> Vec<String> {
     let mut specs = Vec::new();
     for chunk in handl_plugin_ext_diag::split_statements(src) {
-        let Ok(tokens) = handl_plugin_engine_lex_pattern::lex(lang, &chunk.text) else {
+        let Ok(tokens) = hnl_engine_lex_pattern::lex(lang, &chunk.text) else {
             continue;
         };
         if tokens.as_slice().is_empty() {
