@@ -14,7 +14,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 handl-ext = { git = "https://github.com/handl-lang/kernel", branch = "main" }
 handl-language = { git = "https://github.com/handl-lang/kernel", branch = "main" }
-handl-kit-data-canonical = { git = "https://github.com/handl-lang/lang", branch = "main" }
+handl-kit-data-canonical = { git = "https://github.com/handl-lang/kit-data-canonical", branch = "main" }
 handl-kit-arrow-lower = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-platform = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-plugin-compile = { git = "https://github.com/handl-lang/host", branch = "main" }
@@ -170,8 +170,8 @@ handl-value = { path = "../kernel/crates/handl-value" }
 handl-kit-canonical = { path = "../kit-canonical/crates/kit-canonical" }
 handl-plugin-ffi = { path = "../kit-canonical/modules/ffi" }
 
-[patch."https://github.com/handl-lang/lang"]
-handl-kit-data-canonical = { path = "../lang/crates/handl-kit-data-canonical" }
+[patch."https://github.com/handl-lang/kit-data-canonical"]
+handl-kit-data-canonical = { path = "../kit-data-canonical/crates/handl-kit-data-canonical" }
 
 [patch."https://github.com/handl-lang/lib-archive"]
 handl-lib-archive = { path = "../lib-archive" }
