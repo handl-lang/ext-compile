@@ -93,7 +93,7 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
         }
     };
 
-    let data_kit = match handl_kit_data_canonical::assemble() {
+    let data_kit = match handl_kit_data_prelude::assemble() {
         Ok(k) => k,
         Err(e) => {
             out.err(format!("compile: failed to assemble canonical language: {e}"));
