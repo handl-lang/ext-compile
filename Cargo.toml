@@ -47,22 +47,22 @@ serde_json = "1"
 opt-level = 1
 
 [patch."https://github.com/handl-lang/compile-dot"]
-handl-plugin-compile-dot = { path = "../compile-dot/modules/compile-dot" }
+handl-plugin-compile-dot = { path = "../engine-compile-dot/modules/compile-dot" }
 
 [patch."https://github.com/handl-lang/compile-handl"]
-handl-plugin-compile-handl = { path = "../compile-handl/modules/compile-handl" }
+handl-plugin-compile-handl = { path = "../engine-compile-handl/modules/compile-handl" }
 
 [patch."https://github.com/handl-lang/compile-js"]
-handl-plugin-compile-js = { path = "../compile-js" }
+handl-plugin-compile-js = { path = "../engine-compile-js" }
 
 [patch."https://github.com/handl-lang/compile-llvm"]
-handl-plugin-compile-llvm = { path = "../compile-llvm" }
+handl-plugin-compile-llvm = { path = "../engine-compile-llvm" }
 
 [patch."https://github.com/handl-lang/compile-sexp"]
-handl-plugin-compile-sexp = { path = "../compile-sexp/modules/compile-sexp" }
+handl-plugin-compile-sexp = { path = "../engine-compile-sexp/modules/compile-sexp" }
 
 [patch."https://github.com/handl-lang/compile-term"]
-handl-plugin-compile-term = { path = "../compile-term/modules/compile-term" }
+handl-plugin-compile-term = { path = "../engine-compile-term/modules/compile-term" }
 
 [patch."https://github.com/handl-lang/engine"]
 hnl-engine = { path = "../engine" }
