@@ -1,7 +1,7 @@
 //! `hnl-ext-compile` — the `compile` extension for `hnl` (ADR-0149).
 //!
 //! The compile pipeline is the desired-state codegen kernel
-//! (`hnl-engine-codegen`, PL-004): each target repo's compiler
+//! (`hnl-tool-codegen`, PL-004): each target repo's compiler
 //! implements `Emitter<Term>` (js: `Emitter<JsIr>`) producing a
 //! desired `Change` set; this crate drives `materialize` → `verify` →
 //! `Engine::apply` over an in-memory `MemoryStore` — the same
@@ -30,12 +30,12 @@ use handl_ext::{ExtRequest, ExtResponse, ExtensionManifest};
 use handl_kit_arrow_lower::lower_ast;
 use handl_language::{AstRef, Language, Source};
 use handl_runtime::{EngineRegistry, Runtime, RuntimeConfig};
-use hnl_engine_codegen::{
+use hnl_tool_codegen::{
     ApplyOptions, ArtifactStore, EmitContext, Emitter, Engine, IrModule, MemoryStore, RunMeta,
 };
-use hnl_engine_lex_pattern::DataLexerEngine;
-use hnl_engine_parse::{ParserEngine, ParserRequest};
-use hnl_engine_parse_pratt::PrattEngine;
+use hnl_tool_lex_pattern::DataLexerEngine;
+use hnl_tool_parse::{ParserEngine, ParserRequest};
+use hnl_tool_parse_pratt::PrattEngine;
 use serde_json::Value;
 
 handl_ext::export!(
@@ -172,7 +172,7 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
         }
     };
 
-    let report = hnl_engine_typecheck::TypecheckReport::default();
+    let report = hnl_tool_typecheck::TypecheckReport::default();
     let input = handl_plugin_compile::CompilerInput::new(
         src,
         ast,
@@ -207,7 +207,7 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
     0
 }
 
-/// Route `request` through the `hnl-engine-codegen` kernel: the target
+/// Route `request` through the `hnl-tool-codegen` kernel: the target
 /// compiler's `Emitter` impl renders the desired `Change` set,
 /// `verify` is the honest-decline gate, and `Engine::apply` converges
 /// an in-memory `MemoryStore` (journal + manifest live inside the
@@ -323,7 +323,7 @@ where
     let primary = changes
         .iter()
         .find_map(|c| match c {
-            hnl_engine_codegen::Change::Put { artifact, .. } => Some(artifact.clone()),
+            hnl_tool_codegen::Change::Put { artifact, .. } => Some(artifact.clone()),
             _ => None,
         })
         .ok_or_else(|| format!("{target} emitter produced no artifacts"))?;
@@ -455,7 +455,7 @@ fn js_module_graph(
 fn module_import_specs(lang: &Language, src: &str) -> Vec<String> {
     let mut specs = Vec::new();
     for chunk in handl_plugin_ext_diag::split_statements(src) {
-        let Ok(tokens) = hnl_engine_lex_pattern::lex(lang, &chunk.text) else {
+        let Ok(tokens) = hnl_tool_lex_pattern::lex(lang, &chunk.text) else {
             continue;
         };
         if tokens.as_slice().is_empty() {

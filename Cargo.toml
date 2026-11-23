@@ -25,15 +25,15 @@ handl-kit-data-prelude = { git = "https://github.com/handl-lang/host", branch = 
 handl-kit-arrow-lower = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-platform = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-plugin-compile = { git = "https://github.com/handl-lang/host", branch = "main" }
-hnl-engine-lex-pattern = { git = "https://github.com/handl-lang/engine-lex-pattern", branch = "main" }
-hnl-engine-parse = { git = "https://github.com/handl-lang/engine-parse", branch = "main" }
-hnl-engine-parse-pratt = { git = "https://github.com/handl-lang/engine-parse-pratt", branch = "main" }
-hnl-engine-typecheck = { git = "https://github.com/handl-lang/engine-typecheck", branch = "main" }
+hnl-tool-lex-pattern = { git = "https://github.com/handl-lang/tool-lex-pattern", branch = "main" }
+hnl-tool-parse = { git = "https://github.com/handl-lang/tool-parse", branch = "main" }
+hnl-tool-parse-pratt = { git = "https://github.com/handl-lang/tool-parse-pratt", branch = "main" }
+hnl-tool-typecheck = { git = "https://github.com/handl-lang/tool-typecheck", branch = "main" }
 # PL-004 T-101: the desired-state kernel the `compile` command routes
 # through — `Emitter<Term>`/`Emitter<JsIr>` impls in the compile-*
 # crates produce `Change` sets applied via `Engine` + `MemoryStore`.
 # `handl-term` provides `IrModule for Term`.
-hnl-engine-codegen = { git = "https://github.com/handl-lang/engine-codegen", branch = "main", features = ["handl-term"] }
+hnl-tool-codegen = { git = "https://github.com/handl-lang/tool-codegen", branch = "main", features = ["handl-term"] }
 handl-plugin-ext-compile = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-plugin-ext-diag = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-runtime = { git = "https://github.com/handl-lang/host", branch = "main" }
@@ -86,20 +86,20 @@ handl-runtime = { path = "../host/crates/handl-runtime" }
 
 # PL-004: the desired-state codegen kernel the `compile` command routes
 # through — resolve the sibling checkout like the other ext repos.
-[patch."https://github.com/handl-lang/engine-codegen"]
-hnl-engine-codegen = { path = "../engine-codegen" }
+[patch."https://github.com/handl-lang/tool-codegen"]
+hnl-tool-codegen = { path = "../tool-codegen" }
 
-# The six compile targets live in the `engine-compile-*` repos; the git
+# The six compile targets live in the `tool-compile-*` repos; the git
 # deps still carry the pre-rename `compile-*` URLs.
 [patch."https://github.com/handl-lang/compile-js"]
-handl-plugin-compile-js = { path = "../engine-compile-js" }
+handl-plugin-compile-js = { path = "../tool-compile-js" }
 [patch."https://github.com/handl-lang/compile-llvm"]
-handl-plugin-compile-llvm = { path = "../engine-compile-llvm" }
+handl-plugin-compile-llvm = { path = "../tool-compile-llvm" }
 [patch."https://github.com/handl-lang/compile-handl"]
-handl-plugin-compile-handl = { path = "../engine-compile-handl/modules/compile-handl" }
+handl-plugin-compile-handl = { path = "../tool-compile-handl/modules/compile-handl" }
 [patch."https://github.com/handl-lang/compile-term"]
-handl-plugin-compile-term = { path = "../engine-compile-term/modules/compile-term" }
+handl-plugin-compile-term = { path = "../tool-compile-term/modules/compile-term" }
 [patch."https://github.com/handl-lang/compile-dot"]
-handl-plugin-compile-dot = { path = "../engine-compile-dot/modules/compile-dot" }
+handl-plugin-compile-dot = { path = "../tool-compile-dot/modules/compile-dot" }
 [patch."https://github.com/handl-lang/compile-sexp"]
-handl-plugin-compile-sexp = { path = "../engine-compile-sexp/modules/compile-sexp" }
+handl-plugin-compile-sexp = { path = "../tool-compile-sexp/modules/compile-sexp" }
