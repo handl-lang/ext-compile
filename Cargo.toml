@@ -21,7 +21,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 handl-ext = { git = "https://github.com/handl-lang/kernel", branch = "main" }
 handl-language = { git = "https://github.com/handl-lang/kernel", branch = "main" }
-handl-kit-data-prelude = { git = "https://github.com/handl-lang/kit-data-prelude", branch = "main" }
+handl-kit-data-prelude = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-kit-arrow-lower = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-platform = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-plugin-compile = { git = "https://github.com/handl-lang/host", branch = "main" }
@@ -50,3 +50,56 @@ serde_json = "1"
 
 [profile.dev]
 opt-level = 1
+
+# ADR-0128 §Resolution: local development resolves deps from the sibling
+# checkouts; the committed `[patch]` tables are stripped by CI, which
+# resolves the `branch = "main"` git sources instead.
+#
+# T-124–T-126: the folded kit crates (`handl-kit-data-prelude` included —
+# it moved into the host workspace) resolve from the sibling `../host`
+# checkout — several vendor `../../../lib-*` packages in build.rs, which
+# a bare git checkout cannot see.
+[patch."https://github.com/handl-lang/host"]
+handl-kit-core = { path = "../host/crates/handl-kit-core" }
+handl-kit-prelude = { path = "../host/crates/kit-prelude" }
+handl-kit-data-prelude = { path = "../host/crates/handl-kit-data-prelude" }
+handl-kit-prelude-lang = { path = "../host/crates/handl-kit-prelude-lang" }
+handl-kit-stdlib = { path = "../host/crates/handl-kit-stdlib" }
+handl-kit-server = { path = "../host/crates/handl-kit-server" }
+handl-kit-ffi = { path = "../host/crates/handl-kit-ffi" }
+handl-plugin-ffi = { path = "../host/crates/plugin-ffi" }
+handl-kit-lang = { path = "../host/crates/handl-kit-lang" }
+handl-kit-eqsat = { path = "../host/crates/handl-kit-eqsat" }
+handl-kit-mlopt = { path = "../host/crates/kit-mlopt" }
+hnl-ext-mlopt = { path = "../host/crates/hnl-ext-mlopt" }
+handl-kit-arrow-lower = { path = "../host/crates/handl-kit-arrow-lower" }
+handl-kit-data = { path = "../host/crates/handl-kit-data" }
+handl-platform = { path = "../host/crates/platform" }
+handl-plugin-compile = { path = "../host/crates/plugin-compile" }
+handl-plugin-ext-compile = { path = "../host/crates/plugin-ext-compile" }
+handl-plugin-ext-diag = { path = "../host/crates/plugin-ext-diag" }
+handl-plugin-lib-handl = { path = "../host/crates/plugin-lib-handl" }
+handl-plugin-lib-stdlib = { path = "../host/crates/plugin-lib-stdlib" }
+handl-plugin-lib-tag = { path = "../host/crates/plugin-lib-tag" }
+handl-plugin-module = { path = "../host/crates/plugin-module" }
+handl-runtime = { path = "../host/crates/handl-runtime" }
+
+# PL-004: the desired-state codegen kernel the `compile` command routes
+# through — resolve the sibling checkout like the other ext repos.
+[patch."https://github.com/handl-lang/engine-codegen"]
+hnl-engine-codegen = { path = "../engine-codegen" }
+
+# The six compile targets live in the `engine-compile-*` repos; the git
+# deps still carry the pre-rename `compile-*` URLs.
+[patch."https://github.com/handl-lang/compile-js"]
+handl-plugin-compile-js = { path = "../engine-compile-js" }
+[patch."https://github.com/handl-lang/compile-llvm"]
+handl-plugin-compile-llvm = { path = "../engine-compile-llvm" }
+[patch."https://github.com/handl-lang/compile-handl"]
+handl-plugin-compile-handl = { path = "../engine-compile-handl/modules/compile-handl" }
+[patch."https://github.com/handl-lang/compile-term"]
+handl-plugin-compile-term = { path = "../engine-compile-term/modules/compile-term" }
+[patch."https://github.com/handl-lang/compile-dot"]
+handl-plugin-compile-dot = { path = "../engine-compile-dot/modules/compile-dot" }
+[patch."https://github.com/handl-lang/compile-sexp"]
+handl-plugin-compile-sexp = { path = "../engine-compile-sexp/modules/compile-sexp" }
