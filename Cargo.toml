@@ -40,12 +40,12 @@ handl-runtime = { git = "https://github.com/handl-lang/host", branch = "main" }
 # The six compile targets — each lives in its target repo (ADR-0128 §0.3:
 # the extension's target set is its dep list). Defaults match the old
 # `hnl` binary's feature set: all six on.
-handl-plugin-compile-js = { git = "https://github.com/handl-lang/compile-js", branch = "main" }
-handl-plugin-compile-llvm = { git = "https://github.com/handl-lang/compile-llvm", branch = "main" }
-handl-plugin-compile-handl = { git = "https://github.com/handl-lang/compile-handl", branch = "main" }
-handl-plugin-compile-term = { git = "https://github.com/handl-lang/compile-term", branch = "main" }
-handl-plugin-compile-dot = { git = "https://github.com/handl-lang/compile-dot", branch = "main" }
-handl-plugin-compile-sexp = { git = "https://github.com/handl-lang/compile-sexp", branch = "main" }
+handl-plugin-compile-js = { git = "https://github.com/handl-lang/tool-compile-js", branch = "main" }
+handl-plugin-compile-llvm = { git = "https://github.com/handl-lang/tool-compile-llvm", branch = "main" }
+handl-plugin-compile-handl = { git = "https://github.com/handl-lang/tool-compile-handl", branch = "main" }
+handl-plugin-compile-term = { git = "https://github.com/handl-lang/tool-compile-term", branch = "main" }
+handl-plugin-compile-dot = { git = "https://github.com/handl-lang/tool-compile-dot", branch = "main" }
+handl-plugin-compile-sexp = { git = "https://github.com/handl-lang/tool-compile-sexp", branch = "main" }
 serde_json = "1"
 
 [profile.dev]
@@ -91,15 +91,15 @@ hnl-tool-codegen = { path = "../tool-codegen" }
 
 # The six compile targets live in the `tool-compile-*` repos; the git
 # deps still carry the pre-rename `compile-*` URLs.
-[patch."https://github.com/handl-lang/compile-js"]
+[patch."https://github.com/handl-lang/tool-compile-js"]
 handl-plugin-compile-js = { path = "../tool-compile-js" }
-[patch."https://github.com/handl-lang/compile-llvm"]
+[patch."https://github.com/handl-lang/tool-compile-llvm"]
 handl-plugin-compile-llvm = { path = "../tool-compile-llvm" }
-[patch."https://github.com/handl-lang/compile-handl"]
+[patch."https://github.com/handl-lang/tool-compile-handl"]
 handl-plugin-compile-handl = { path = "../tool-compile-handl/modules/compile-handl" }
-[patch."https://github.com/handl-lang/compile-term"]
+[patch."https://github.com/handl-lang/tool-compile-term"]
 handl-plugin-compile-term = { path = "../tool-compile-term/modules/compile-term" }
-[patch."https://github.com/handl-lang/compile-dot"]
+[patch."https://github.com/handl-lang/tool-compile-dot"]
 handl-plugin-compile-dot = { path = "../tool-compile-dot/modules/compile-dot" }
-[patch."https://github.com/handl-lang/compile-sexp"]
+[patch."https://github.com/handl-lang/tool-compile-sexp"]
 handl-plugin-compile-sexp = { path = "../tool-compile-sexp/modules/compile-sexp" }
