@@ -1,18 +1,27 @@
 //! `hnl-ext-compile` — the `compile` extension for `hnl` (ADR-0149).
 //!
-//! The compile pipeline lives in `handl-plugin-ext-compile`
-//! (`CompileFileRequest`/`CompileDispatcher`) driving the six target
-//! modules linked from their own repos — `compile-js` (`web`),
-//! `compile-llvm` (`native`), `compile-handl` (`handl`), `compile-term`
-//! (`term`), `compile-dot` (`dot`), `compile-sexp` (`sexp`) — all six on,
-//! matching the old `hnl` binary's default feature set (ADR-0128 §0.3).
-//! This crate is the *packaging*: it exports the ADR-0149 ABI
+//! The compile pipeline is the desired-state codegen kernel
+//! (`hnl-engine-codegen`, PL-004): each target repo's compiler
+//! implements `Emitter<Term>` (js: `Emitter<JsIr>`) producing a
+//! desired `Change` set; this crate drives `materialize` → `verify` →
+//! `Engine::apply` over an in-memory `MemoryStore` — the same
+//! single-shot sink semantics `hnl compile` had before (stdout or
+//! `--output <path>`), with the journal/manifest lifecycle running
+//! inside the store. The six target modules are linked from their own
+//! repos — `compile-js` (`web`), `compile-llvm` (`native`),
+//! `compile-handl` (`handl`), `compile-term` (`term`), `compile-dot`
+//! (`dot`), `compile-sexp` (`sexp`) — all six on, matching the old
+//! `hnl` binary's default feature set (ADR-0128 §0.3). This crate is
+//! the *packaging*: it exports the ADR-0149 ABI
 //! (`handl_ext_manifest` / `handl_ext_dispatch` / `handl_ext_free`) and
 //! implements `hnl compile <js|llvm|handl|term|dot|sexp> <file>
-//! [--output|--source-map|--debug|--format|--to|--emit]` — byte-for-byte
-//! the semantics the built-in `compile` arm had before the host went dumb,
-//! including the `.hnl` import-graph walk for the `js` target
-//! (`js_module_graph`, carried over from the old `host-cli` main.rs).
+//! [--output|--source-map|--debug|--format|--to|--emit]`, including the
+//! `.hnl` import-graph walk for the `js` target (`js_module_graph`,
+//! carried over from the old `host-cli` main.rs).
+//!
+//! The legacy `CompileDispatcher`/`Compiler` route through
+//! `handl-plugin-ext-compile` is bypassed: the kernel `Emitter` impls
+//! are the single emit path (PL-004 clean break — no dual emit).
 
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -21,6 +30,9 @@ use handl_ext::{ExtRequest, ExtResponse, ExtensionManifest};
 use handl_kit_arrow_lower::lower_ast;
 use handl_language::{AstRef, Language, Source};
 use handl_runtime::{EngineRegistry, Runtime, RuntimeConfig};
+use hnl_engine_codegen::{
+    ApplyOptions, ArtifactStore, EmitContext, Emitter, Engine, IrModule, MemoryStore, RunMeta,
+};
 use hnl_engine_lex_pattern::DataLexerEngine;
 use hnl_engine_parse::{ParserEngine, ParserRequest};
 use hnl_engine_parse_pratt::PrattEngine;
@@ -80,6 +92,16 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
             return 2;
         }
     };
+
+    // Unknown targets are a usage error (exit 2), distinct from a
+    // compile failure (exit 1) — checked before any file I/O.
+    if !matches!(
+        request.target.as_str(),
+        "js" | "llvm" | "handl" | "term" | "dot" | "sexp"
+    ) {
+        out.err(format!("compile: unsupported target `{}`", request.target));
+        return 2;
+    }
 
     let disk = resolve(cwd, &request.path);
     let src = match std::fs::read_to_string(&disk) {
@@ -150,23 +172,6 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
         }
     };
 
-    // The compile-target set is this extension's dep list (ADR-0128 §0.3):
-    // each arm is compiled only when the target's repo module is linked in.
-    // Built before `CompilerInput` so the js arm can resolve the entry
-    // file's import graph from `src` (`src` moves into the input below).
-    let config: Box<dyn handl_plugin_compile::CompilerConfig> = match request.target.as_str() {
-        "js" => build_js_config(&request, runtime.lang(), &src, out),
-        "llvm" => build_llvm_config(&request),
-        "handl" => build_handl_config(&request),
-        "term" => build_term_config(&request),
-        "dot" => build_dot_config(&request),
-        "sexp" => build_sexp_config(&request),
-        other => {
-            out.err(format!("compile: unsupported target `{other}`"));
-            return 2;
-        }
-    };
-
     let report = hnl_engine_typecheck::TypecheckReport::default();
     let input = handl_plugin_compile::CompilerInput::new(
         src,
@@ -177,9 +182,12 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
         report,
     );
 
-    let dispatcher = handl_plugin_ext_compile::CompileDispatcher::new();
-    let output = match dispatcher.compile(&request.target, input, config.as_ref()) {
-        Ok(o) => o,
+    // PL-004: the desired-state kernel path — each target's
+    // `Emitter` impl produces a `Change` set applied to a
+    // `MemoryStore` by `Engine`; the primary artifact's bytes are the
+    // CLI payload (stdout or `--output`).
+    let primary = match compile_via_kernel(&request, &input, out) {
+        Ok(bytes) => bytes,
         Err(e) => {
             out.err(format!("compile: {e}"));
             return 1;
@@ -188,25 +196,152 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
 
     if let Some(path) = &request.output {
         let out_path = resolve(cwd, path);
-        if let Err(e) = std::fs::write(&out_path, output.primary_output().unwrap_or_default()) {
+        if let Err(e) = std::fs::write(&out_path, &primary) {
             out.err(format!("compile: failed to write {}: {e}", path.display()));
             return 2;
         }
     } else {
-        out.stdout.push_str(&String::from_utf8_lossy(
-            output.primary_output().unwrap_or_default(),
-        ));
+        out.stdout.push_str(&String::from_utf8_lossy(&primary));
     }
 
     0
 }
 
+/// Route `request` through the `hnl-engine-codegen` kernel: the target
+/// compiler's `Emitter` impl renders the desired `Change` set,
+/// `verify` is the honest-decline gate, and `Engine::apply` converges
+/// an in-memory `MemoryStore` (journal + manifest live inside the
+/// store under `.handl/codegen/` — nothing touches the filesystem).
+/// Returns the primary artifact's bytes — the first `Put` in
+/// materialize order, matching the legacy
+/// `CompilerOutput::primary_output` (first artifact) semantics.
+fn compile_via_kernel(
+    request: &handl_plugin_ext_compile::CompileFileRequest,
+    input: &handl_plugin_compile::CompilerInput,
+    out: &mut Out,
+) -> Result<Vec<u8>, String> {
+    match request.target.as_str() {
+        // js is the one backend whose honest IR is the full
+        // compilation unit *plus* its config (`JsIr`) — `Term` alone
+        // cannot carry the module surface or the boxed target/format
+        // trait objects (see `compile-js`'s `JsIr` docs).
+        "js" => {
+            let config = build_js_config(request, &input.language, &input.source, out);
+            let ir = handl_plugin_compile_js::JsIr {
+                input: input.clone(),
+                config,
+            };
+            kernel_emit(
+                &handl_plugin_compile_js::JsCompiler,
+                &ir,
+                &EmitContext::new(),
+                "js",
+            )
+        }
+        // llvm reads its config from `EmitContext.config`'s string map
+        // (`LlvmConfig`'s boxed `LlvmTarget` cannot cross it): `debug`
+        // is the only CLI-exposed knob — `target` defaults to x86_64
+        // and `emit_object` is dead config in the legacy path too.
+        "llvm" => {
+            let ctx = EmitContext::new()
+                .with_config("debug", if request.debug { "true" } else { "false" });
+            kernel_emit(
+                &handl_plugin_compile_llvm::LlvmCompiler::new(),
+                &input.term,
+                &ctx,
+                "llvm",
+            )
+        }
+        "handl" => {
+            let ctx =
+                EmitContext::new().with_config("to", request.to.as_deref().unwrap_or("hughes"));
+            kernel_emit(
+                &handl_plugin_compile_handl::HandlCompiler,
+                &input.term,
+                &ctx,
+                "handl",
+            )
+        }
+        "term" => {
+            let ctx =
+                EmitContext::new().with_config("emit", request.emit.as_deref().unwrap_or("json"));
+            kernel_emit(
+                &handl_plugin_compile_term::TermCompiler,
+                &input.term,
+                &ctx,
+                "term",
+            )
+        }
+        "dot" => kernel_emit(
+            &handl_plugin_compile_dot::DotCompiler,
+            &input.term,
+            &EmitContext::new(),
+            "dot",
+        ),
+        "sexp" => kernel_emit(
+            &handl_plugin_compile_sexp::SexpCompiler,
+            &input.term,
+            &EmitContext::new(),
+            "sexp",
+        ),
+        other => Err(format!("unsupported target `{other}`")),
+    }
+}
+
+/// `materialize` → `verify` → `Engine::apply` over a fresh
+/// `MemoryStore`, returning the primary artifact's bytes.
+fn kernel_emit<I, E>(
+    emitter: &E,
+    ir: &I,
+    ctx: &EmitContext,
+    target: &str,
+) -> Result<Vec<u8>, String>
+where
+    I: IrModule,
+    E: Emitter<I>,
+{
+    let changes = emitter.materialize(ir, ctx).map_err(|e| e.to_string())?;
+    // The honest-decline gate: emitters with a `verify` impl (handl's
+    // `"<term>"` placeholder check) refuse degraded output here rather
+    // than silently emitting it.
+    emitter.verify(ir, &changes).map_err(|e| e.to_string())?;
+
+    let store = MemoryStore::new();
+    let engine = Engine::new(&store);
+    let mut meta = RunMeta::new(target, env!("CARGO_PKG_VERSION"));
+    meta.new_run_id();
+    let report = engine
+        .apply(&changes, None, &meta, &ApplyOptions::default())
+        .map_err(|e| e.to_string())?;
+    if report.aborted || !report.failures.is_empty() {
+        return Err(format!(
+            "kernel apply failed for {target}: {:?}",
+            report.failures
+        ));
+    }
+
+    let primary = changes
+        .iter()
+        .find_map(|c| match c {
+            hnl_engine_codegen::Change::Put { artifact, .. } => Some(artifact.clone()),
+            _ => None,
+        })
+        .ok_or_else(|| format!("{target} emitter produced no artifacts"))?;
+    store
+        .read(&primary)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("{target} artifact {} missing after apply", primary.as_str()))
+}
+
+/// Build the `JsConfig` carried inside `JsIr` — the js backend's
+/// honest IR is the compilation unit *plus* this config (boxed
+/// target/format trait objects cannot cross `EmitContext.config`).
 fn build_js_config(
     req: &handl_plugin_ext_compile::CompileFileRequest,
     lang: &Language,
     src: &str,
     out: &mut Out,
-) -> Box<dyn handl_plugin_compile::CompilerConfig> {
+) -> handl_plugin_compile_js::JsConfig {
     use handl_plugin_compile_js::{
         CommonJs, Deno, Esm, Iife, Inline, JsConfig, JsOutputFormat, JsTarget,
     };
@@ -219,7 +354,7 @@ fn build_js_config(
         "inline" => Box::new(Inline),
         other => {
             // Unsupported format is treated like the default `esm`; the
-            // dispatcher will still run and the output can be inspected.
+            // emitter will still run and the output can be inspected.
             out.err(format!(
                 "compile: unknown js format `{other}`, defaulting to esm"
             ));
@@ -229,7 +364,7 @@ fn build_js_config(
 
     let (modules, entry_imports) = js_module_graph(&req.path, src, lang);
 
-    Box::new(JsConfig {
+    JsConfig {
         target,
         format,
         debug: req.debug,
@@ -237,7 +372,8 @@ fn build_js_config(
         source_map: req.source_map,
         modules,
         entry_imports,
-    })
+        ..JsConfig::esm_deno()
+    }
 }
 
 /// The `.hnl` import graph for `hnl compile js` (ADR-0128 Phase 5):
@@ -354,51 +490,6 @@ fn module_import_specs(lang: &Language, src: &str) -> Vec<String> {
         }
     }
     specs
-}
-
-fn build_llvm_config(
-    req: &handl_plugin_ext_compile::CompileFileRequest,
-) -> Box<dyn handl_plugin_compile::CompilerConfig> {
-    use handl_plugin_compile_llvm::{LlvmConfig, X86_64};
-
-    let mut cfg = LlvmConfig::new(Box::new(X86_64));
-    cfg.debug = req.debug;
-    cfg.emit_object = req.format.as_deref().map(|f| f == "o").unwrap_or(false);
-    Box::new(cfg)
-}
-
-fn build_handl_config(
-    req: &handl_plugin_ext_compile::CompileFileRequest,
-) -> Box<dyn handl_plugin_compile::CompilerConfig> {
-    use handl_plugin_compile_handl::HandlConfig;
-
-    let to = req.to.as_deref().unwrap_or("hughes").to_string();
-    Box::new(HandlConfig::new(to))
-}
-
-fn build_term_config(
-    req: &handl_plugin_ext_compile::CompileFileRequest,
-) -> Box<dyn handl_plugin_compile::CompilerConfig> {
-    use handl_plugin_compile_term::TermConfig;
-
-    let emit = req.emit.as_deref().unwrap_or("json").to_string();
-    Box::new(TermConfig::new(emit))
-}
-
-fn build_dot_config(
-    _req: &handl_plugin_ext_compile::CompileFileRequest,
-) -> Box<dyn handl_plugin_compile::CompilerConfig> {
-    use handl_plugin_compile_dot::DotConfig;
-
-    Box::new(DotConfig::new())
-}
-
-fn build_sexp_config(
-    _req: &handl_plugin_ext_compile::CompileFileRequest,
-) -> Box<dyn handl_plugin_compile::CompilerConfig> {
-    use handl_plugin_compile_sexp::SexpConfig;
-
-    Box::new(SexpConfig::new())
 }
 
 // ---------------------------------------------------------------------------

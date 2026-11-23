@@ -29,6 +29,11 @@ hnl-engine-lex-pattern = { git = "https://github.com/handl-lang/engine-lex-patte
 hnl-engine-parse = { git = "https://github.com/handl-lang/engine-parse", branch = "main" }
 hnl-engine-parse-pratt = { git = "https://github.com/handl-lang/engine-parse-pratt", branch = "main" }
 hnl-engine-typecheck = { git = "https://github.com/handl-lang/engine-typecheck", branch = "main" }
+# PL-004 T-101: the desired-state kernel the `compile` command routes
+# through — `Emitter<Term>`/`Emitter<JsIr>` impls in the compile-*
+# crates produce `Change` sets applied via `Engine` + `MemoryStore`.
+# `handl-term` provides `IrModule for Term`.
+hnl-engine-codegen = { git = "https://github.com/handl-lang/engine-codegen", branch = "main", features = ["handl-term"] }
 handl-plugin-ext-compile = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-plugin-ext-diag = { git = "https://github.com/handl-lang/host", branch = "main" }
 handl-runtime = { git = "https://github.com/handl-lang/host", branch = "main" }
