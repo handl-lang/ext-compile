@@ -30,7 +30,7 @@ hnl-tool-parse = { git = "https://github.com/handl-lang/tool-parse", branch = "m
 hnl-tool-parse-pratt = { git = "https://github.com/handl-lang/tool-parse-pratt", branch = "main" }
 hnl-tool-typecheck = { git = "https://github.com/handl-lang/tool-typecheck", branch = "main" }
 # PL-004 T-101: the desired-state kernel the `compile` command routes
-# through — `Emitter<Term>`/`Emitter<JsIr>` impls in the compile-*
+# through — `Emitter<Term>`/`Emitter<JsIr>` impls in the `tool-compile-*`
 # crates produce `Change` sets applied via `Engine` + `MemoryStore`.
 # `handl-term` provides `IrModule for Term`.
 hnl-tool-codegen = { git = "https://github.com/handl-lang/tool-codegen", branch = "main", features = ["handl-term"] }
