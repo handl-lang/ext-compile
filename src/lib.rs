@@ -20,10 +20,10 @@ use std::rc::Rc;
 use handl_ext::{ExtRequest, ExtResponse, ExtensionManifest};
 use handl_kit_arrow_lower::lower_ast;
 use handl_language::{AstRef, Language, Source};
+use handl_runtime::{EngineRegistry, Runtime, RuntimeConfig};
 use hnl_engine_lex_pattern::DataLexerEngine;
 use hnl_engine_parse::{ParserEngine, ParserRequest};
 use hnl_engine_parse_pratt::PrattEngine;
-use handl_runtime::{EngineRegistry, Runtime, RuntimeConfig};
 use serde_json::Value;
 
 handl_ext::export!(
@@ -96,7 +96,9 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
     let data_kit = match handl_kit_data_prelude::assemble() {
         Ok(k) => k,
         Err(e) => {
-            out.err(format!("compile: failed to assemble canonical language: {e}"));
+            out.err(format!(
+                "compile: failed to assemble canonical language: {e}"
+            ));
             return 2;
         }
     };
@@ -191,8 +193,9 @@ fn compile_command(args: &[String], cwd: &Path, out: &mut Out) -> i32 {
             return 2;
         }
     } else {
-        out.stdout
-            .push_str(&String::from_utf8_lossy(output.primary_output().unwrap_or_default()));
+        out.stdout.push_str(&String::from_utf8_lossy(
+            output.primary_output().unwrap_or_default(),
+        ));
     }
 
     0
@@ -217,7 +220,9 @@ fn build_js_config(
         other => {
             // Unsupported format is treated like the default `esm`; the
             // dispatcher will still run and the output can be inspected.
-            out.err(format!("compile: unknown js format `{other}`, defaulting to esm"));
+            out.err(format!(
+                "compile: unknown js format `{other}`, defaulting to esm"
+            ));
             Box::new(Esm)
         }
     };
@@ -251,7 +256,10 @@ fn js_module_graph(
     entry: &Path,
     entry_src: &str,
     lang: &Language,
-) -> (Vec<handl_plugin_compile_js::JsModule>, Vec<(String, String)>) {
+) -> (
+    Vec<handl_plugin_compile_js::JsModule>,
+    Vec<(String, String)>,
+) {
     let deps = handl_platform::discover_dependencies(entry).unwrap_or_default();
     let module_root = handl_platform::discover_manifest_dir(entry);
     let mut seen = std::collections::HashSet::new();
@@ -406,15 +414,15 @@ fn spec_resolution_bases(path: &Path, module_root: Option<&Path>) -> Vec<PathBuf
         Some(dir) if !dir.as_os_str().is_empty() => bases.push(dir.to_path_buf()),
         _ => bases.push(PathBuf::from(".")),
     }
-    if let Some(root) = module_root {
-        if !bases.iter().any(|b| b.as_path() == root) {
-            bases.push(root.to_path_buf());
-        }
+    if let Some(root) = module_root
+        && !bases.iter().any(|b| b.as_path() == root)
+    {
+        bases.push(root.to_path_buf());
     }
-    if let Ok(cwd) = std::env::current_dir() {
-        if !bases.iter().any(|b| *b == cwd) {
-            bases.push(cwd);
-        }
+    if let Ok(cwd) = std::env::current_dir()
+        && !bases.contains(&cwd)
+    {
+        bases.push(cwd);
     }
     bases
 }
@@ -450,8 +458,11 @@ fn resolve_spec_path(
     if Path::new(spec).is_absolute() {
         return file_candidate(Path::new(spec), spec);
     }
-    resolve_dep_spec_path(spec, deps)
-        .or_else(|| bases.iter().find_map(|base| file_candidate(&base.join(spec), spec)))
+    resolve_dep_spec_path(spec, deps).or_else(|| {
+        bases
+            .iter()
+            .find_map(|base| file_candidate(&base.join(spec), spec))
+    })
 }
 
 /// Whether `<spec>` resolves to an existing file — first as a
@@ -550,10 +561,7 @@ mod tests {
         let dir = tmpdir("target");
         let file = dir.join("p.hnl");
         std::fs::write(&file, "x = 1 + 2;").unwrap();
-        let res = run(
-            &["bogus".into(), file.to_string_lossy().into_owned()],
-            &dir,
-        );
+        let res = run(&["bogus".into(), file.to_string_lossy().into_owned()], &dir);
         assert_eq!(res.code, 2);
         assert!(res.stderr.contains("compile: unsupported target `bogus`"));
         std::fs::remove_dir_all(&dir).ok();
