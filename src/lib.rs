@@ -651,7 +651,7 @@ mod tests {
     fn unknown_target_is_usage_error() {
         let dir = tmpdir("target");
         let file = dir.join("p.hnl");
-        std::fs::write(&file, "x = 1 + 2;").unwrap();
+        std::fs::write(&file, "x := 1 + 2;").unwrap();
         let res = run(&["bogus".into(), file.to_string_lossy().into_owned()], &dir);
         assert_eq!(res.code, 2);
         assert!(res.stderr.contains("compile: unsupported target `bogus`"));
